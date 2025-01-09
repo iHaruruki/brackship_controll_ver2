@@ -1,5 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
+#include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <tf2/LinearMath/Quaternion.h>
@@ -20,8 +20,8 @@ public:
         }
 
         // トピックの購読とパブリッシュ
-        twist_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
-            "joy_input", 10, std::bind(&BlackShipController::twistStampedCallback, this, std::placeholders::_1));
+        twist_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            "cmd_vel", 10, std::bind(&BlackShipController::twistCallback, this, std::placeholders::_1));
 
         encoder_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("encoder_publish", 10);
         odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
@@ -29,40 +29,53 @@ public:
         // Transform Broadcasterの初期化
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
-        // タイマーでエンコーダデータの読み取り
+        // タイマーでエンコーダデータの読み取りとオドメトリ更新
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(100), std::bind(&BlackShipController::readEncoderData, this));
+            std::chrono::milliseconds(100), std::bind(&BlackShipController::updateOdometry, this));
     }
 
 private:
-    void twistStampedCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg)
+    void twistCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
     {
-        double input_vel = limitVel(msg->twist.linear.x, msg->twist.angular.z);
-        setSpeed(input_vel, msg->twist.angular.z);
+        double input_vel = limitVel(msg->linear.x, msg->angular.z);
+        setSpeed(input_vel, msg->angular.z);
     }
 
     double limitVel(double vel, double avel)
     {
-        double max_v = 0.3;
-        double max_w = 0.5;
+        double max_v = 0.3;  // 最大直進速度
+        double max_w = 0.5;  // 最大回転速度
+
+        // 速度の制限
         double limited_vel = std::max(std::min(vel, max_v), -max_v);
         double limited_avel = std::max(std::min(avel, max_w), -max_w);
+
         return limited_vel;
     }
 
     void setSpeed(double vel, double avel)
     {
+        // 左右モーターの速度を計算
         int left_speed = static_cast<int>((vel - avel) * 100);
         int right_speed = static_cast<int>((vel + avel) * 100);
 
+        // 回転速度が0の場合、直進時の速度設定を行う
+        if (avel == 0)
+        {
+            left_speed = static_cast<int>(vel * 100);
+            right_speed = static_cast<int>(vel * 100);
+        }
+
+        // モーター制御のためのシリアルデータ作成
         unsigned char motor_send_R[7] = {0x02, 0x01, 0x07, 0x00, static_cast<unsigned char>(right_speed), 0x00, 0x03};
         unsigned char motor_send_L[7] = {0x02, 0x02, 0x07, 0x00, static_cast<unsigned char>(left_speed), 0x00, 0x03};
 
+        // シリアルポートを通じて速度を送信
         serial_.Write2(motor_send_R, 7);
         serial_.Write2(motor_send_L, 7);
     }
 
-    void readEncoderData()
+    void updateOdometry()
     {
         unsigned char encoder_send[5] = {0x02, 0x02, 0x05, 0x09, 0x03};
         unsigned char encoder_recv[10] = {0};
@@ -75,8 +88,9 @@ private:
             int encoder_right = (encoder_recv[5] << 8) | encoder_recv[6];
             int encoder_left = (encoder_recv[7] << 8) | encoder_recv[8];
 
-            double wheel_separation = 0.5;  // 車輪間の距離[m]
-            double wheel_radius = 0.15;     // 車輪の半径[m]
+            // 車輪のセパレーションと半径を設定
+            double wheel_separation = 0.5;  // 車輪間距離 [m]
+            double wheel_radius = 0.15;     // 車輪半径 [m]
             double ticks_per_revolution = 500.0;
             double distance_per_tick = (2 * M_PI * wheel_radius) / ticks_per_revolution;
 
@@ -90,7 +104,9 @@ private:
             y_ += delta_distance * sin(theta_);
             theta_ += delta_theta;
 
-            // オドメトリメッセージの作成
+            RCLCPP_INFO(this->get_logger(), "x: %f, y: %f, theta: %f", x_, y_, theta_);
+
+            // オドメトリメッセージ作成
             nav_msgs::msg::Odometry odom_msg;
             odom_msg.header.stamp = this->now();
             odom_msg.header.frame_id = "odom";
@@ -136,7 +152,7 @@ private:
     }
 
     CSerial serial_;
-    rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr twist_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr twist_sub_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr encoder_pub_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
