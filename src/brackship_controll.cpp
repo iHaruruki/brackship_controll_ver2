@@ -4,7 +4,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include "../include/brackship_controll/serial.hpp"
+#include "../include/brackship_controll_ver2/serial.hpp"
 #include <vector>
 
 class BlackShipController : public rclcpp::Node

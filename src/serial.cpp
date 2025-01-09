@@ -1,6 +1,6 @@
 // Myserial.cpp : 実装ファイル
 //
-#include "../include/brackship_controll/serial.hpp"
+#include "../include/brackship_controll_ver2/serial.hpp"
 
 // CSerial
 CSerial::CSerial() {
