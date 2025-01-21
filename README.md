@@ -19,5 +19,5 @@ $ ros2 run brackship_controll_ver2 brackship_controll
 ```
 $ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
-DUALSHOCK4（PlayStation 4専用ワイヤレスコントローラー）で操縦する場合
+DUALSHOCK4（PlayStation 4専用ワイヤレスコントローラー）で操縦する場合<br>
 [joy_to_cmdvel](https://github.com/iHaruruki/joy_to_cmdvel.git)
