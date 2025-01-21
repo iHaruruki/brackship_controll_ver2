@@ -6,7 +6,7 @@ BrackShip ROS2-Humble用ドライバ
 ## インストール
 ```
 $ cd <workspace>
-$ git clone #clone this package
+$ git clone https://github.com/iHaruruki/brackship_controll_ver2.git #clone this package
 $ colcon build
 $ source install/setup.bash
 ```
