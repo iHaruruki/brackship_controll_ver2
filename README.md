@@ -7,6 +7,7 @@ BrackShip ROS2-Humble用ドライバ
 ```
 $ cd <workspace>
 $ git clone https://github.com/iHaruruki/brackship_controll_ver2.git #clone this package
+$ cd <workspace>
 $ colcon build
 $ source install/setup.bash
 ```
@@ -16,5 +17,7 @@ $ ros2 run brackship_controll_ver2 brackship_controll
 ```
 キーボードを使って操縦する
 ```
-ros2 teleop_twist_keybord
+$ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
+DUALSHOCK4（PlayStation 4専用ワイヤレスコントローラー）で操縦する場合
+[https://github.com/iHaruruki/joy_to_cmdvel](joy_to_cmdvel)
